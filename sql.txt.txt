@@ -1,0 +1,80 @@
+SELECT *
+FROM page_visits
+LIMIT 10;
+
+SELECT COUNT(DISTINCT utm_campaign) AS num_campaigns
+FROM page_visits;
+
+SELECT COUNT(DISTINCT utm_source) AS num_sources
+FROM page_visits;
+
+SELECT utm_campaign
+            ,utm_source
+FROM page_visits
+GROUP BY utm_campaign
+ORDER BY utm_campaign;
+
+SELECT utm_campaign AS campaign
+            ,utm_source AS source
+            ,COUNT(DISTINCT user_id) AS traffic
+FROM page_visits
+GROUP BY utm_campaign
+ORDER BY 3 DESC;
+
+SELECT DISTINCT page_name
+FROM page_visits;
+
+SELECT COUNT(DISTINCT user_id) as user_touches
+            ,page_name
+FROM page_visits
+GROUP BY page_name;
+
+SELECT COUNT(DISTINCT user_id) as purchases
+ FROM page_visits
+ WHERE page_name = '4 - purchase';
+
+WITH first_touch AS (
+  SELECT user_id
+  	,MIN(timestamp) as first_touch_at		
+  FROM page_visits
+  GROUP BY user_id),
+campaignsource_landing AS
+(SELECT ft.user_id
+      ,ft.first_touch_at
+      ,pv.page_name
+      ,pv.utm_campaign
+      ,pv.utm_source
+FROM first_touch as ft
+JOIN page_visits as pv
+	ON ft.user_id = pv.user_id AND 
+  	 ft.first_touch_at = pv.timestamp
+ORDER BY ft.user_id, ft.first_touch_at)
+SELECT utm_campaign as campaign
+              ,utm_source as source
+              ,COUNT(user_id) as landings
+FROM campaignsource_landing
+GROUP BY utm_campaign
+ORDER BY 3 DESC;
+
+WITH last_touch AS (
+	SELECT user_id
+		,MAX(timestamp) as last_touch_at
+	FROM page_visits
+	GROUP BY user_id),
+campaignsource_purchase AS (
+SELECT lt.user_id
+ 	,lt.last_touch_at
+      	,pv.page_name
+      	,pv.utm_campaign
+      	,pv.utm_source
+FROM last_touch as lt
+JOIN page_visits as pv
+	ON lt.user_id = pv.user_id AND
+  	 lt.last_touch_at =  pv.timestamp
+  WHERE pv.page_name = '4 - purchase')
+SELECT utm_campaign
+			,utm_source
+      ,COUNT(user_id) as purchases
+FROM campaignsource_purchase
+GROUP BY utm_campaign
+ORDER BY 3 DESC;
